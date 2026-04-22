@@ -15,10 +15,10 @@ const categoryColors: Record<string, string> = {
 };
 
 const statusConfig = {
-  locked: { icon: Lock, bg: '#0f172a', border: '#334155', text: '#64748b', glow: 'none' },
-  available: { icon: Circle, bg: '#0f172a', border: '#06b6d4', text: '#06b6d4', glow: '0 0 15px rgba(6, 182, 212, 0.3)' },
-  active: { icon: Play, bg: '#1e293b', border: '#ea580c', text: '#ea580c', glow: '0 0 20px rgba(234, 88, 12, 0.4)' },
-  completed: { icon: CheckCircle2, bg: '#0f172a', border: '#f59e0b', text: '#f59e0b', glow: '0 0 15px rgba(245, 158, 11, 0.3)' },
+  locked: { icon: Lock, track: '#1e293b', fill: '#334155', glow: 'none' },
+  available: { icon: Circle, track: '#1e293b', fill: '#06b6d4', glow: '0 0 15px rgba(6, 182, 212, 0.35)' },
+  active: { icon: Play, track: '#1e293b', fill: '#ea580c', glow: '0 0 20px rgba(234, 88, 12, 0.45)' },
+  completed: { icon: CheckCircle2, track: '#1e293b', fill: '#f59e0b', glow: '0 0 18px rgba(245, 158, 11, 0.4)' },
 };
 
 function TreeNodeComponent({ data: nodeData, selected }: NodeProps) {
@@ -27,76 +27,116 @@ function TreeNodeComponent({ data: nodeData, selected }: NodeProps) {
   const config = statusConfig[status];
   const StatusIcon = config.icon;
   const catColor = categoryColors[category] || '#ea580c';
+  const activeColor = status === 'active' ? catColor : config.fill;
+
+  const size = 72;
+  const strokeWidth = 4;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const offset = circumference - (progress / 100) * circumference;
 
   return (
-    <motion.div
-      initial={{ scale: 0, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-      className="relative"
-    >
-      {/* Glow effect for active/completed */}
-      {(status === 'active' || status === 'completed') && (
-        <div 
-          className="absolute inset-0 rounded-2xl blur-xl opacity-30"
-          style={{ background: catColor }}
-        />
-      )}
-      
-      <div
-        className={`relative px-4 py-3 rounded-2xl border-2 min-w-[180px] max-w-[220px] cursor-pointer transition-all duration-300 ${
-          selected ? 'scale-105' : 'hover:scale-[1.02]'
-        }`}
+    <div className="flex flex-col items-center">
+      {/* Title above node */}
+      <div className="mb-2 px-2 py-0.5 rounded-md bg-card/80 border border-border/50">
+        <span className="text-[11px] font-bold text-foreground whitespace-nowrap leading-none">
+          {label}
+        </span>
+      </div>
+
+      {/* Circular node */}
+      <motion.div
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+        className="relative"
         style={{
-          background: config.bg,
-          borderColor: status === 'active' ? catColor : config.border,
-          boxShadow: selected 
-            ? `0 0 30px ${catColor}44, ${config.glow}` 
-            : config.glow,
+          filter: status !== 'locked' ? `drop-shadow(${config.glow})` : undefined,
         }}
       >
-        <div className="flex items-center gap-2 mb-2">
-          <StatusIcon 
-            size={16} 
-            style={{ color: status === 'active' ? catColor : config.text }}
+        {/* Outer glow ring for active/completed */}
+        {(status === 'active' || status === 'completed') && (
+          <motion.div
+            className="absolute inset-0 rounded-full"
+            style={{
+              background: `radial-gradient(circle, ${activeColor}15 0%, transparent 70%)`,
+            }}
+            animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0.8, 0.5] }}
+            transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
           />
-          <span 
-            className="text-xs font-bold uppercase tracking-wider"
-            style={{ color: status === 'active' ? catColor : config.text }}
+        )}
+
+        <div
+          className={`relative rounded-full transition-transform duration-200 ${
+            selected ? 'scale-110' : 'hover:scale-105'
+          }`}
+          style={{ width: size, height: size }}
+        >
+          {/* SVG progress ring */}
+          <svg
+            width={size}
+            height={size}
+            className="absolute inset-0 -rotate-90"
           >
-            {status}
-          </span>
-        </div>
-        
-        <h3 className="text-sm font-bold text-foreground leading-tight mb-2">
-          {label}
-        </h3>
-        
-        {/* Progress bar */}
-        {status !== 'locked' && (
-          <div className="h-1.5 bg-card-hover rounded-full overflow-hidden">
-            <motion.div
-              className="h-full rounded-full"
-              style={{ 
-                background: `linear-gradient(90deg, ${catColor}66, ${catColor})`,
+            {/* Background track */}
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              fill="#0f172a"
+              stroke={config.track}
+              strokeWidth={strokeWidth}
+            />
+            {/* Progress arc */}
+            {progress > 0 && (
+              <motion.circle
+                cx={size / 2}
+                cy={size / 2}
+                r={radius}
+                fill="transparent"
+                stroke={activeColor}
+                strokeWidth={strokeWidth}
+                strokeLinecap="round"
+                strokeDasharray={circumference}
+                initial={{ strokeDashoffset: circumference }}
+                animate={{ strokeDashoffset: offset }}
+                transition={{ duration: 1, ease: 'easeOut' }}
+                style={{
+                  filter: `drop-shadow(0 0 4px ${activeColor}66)`,
+                }}
+              />
+            )}
+          </svg>
+
+          {/* Center icon */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <StatusIcon
+              size={22}
+              style={{
+                color: status === 'locked' ? '#475569' : activeColor,
+                filter: status !== 'locked' ? `drop-shadow(0 0 3px ${activeColor}66)` : undefined,
               }}
-              initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
-              transition={{ duration: 0.8, ease: 'easeOut' }}
             />
           </div>
-        )}
-        
-        {status !== 'locked' && (
-          <div className="mt-1.5 flex justify-between items-center">
-            <span className="text-[10px] text-muted">{progress}%</span>
-            <span className="text-[10px] font-mono" style={{ color: catColor }}>
-              {node.xpValue} XP
-            </span>
-          </div>
-        )}
-      </div>
-    </motion.div>
+
+          {/* Pulse ring for available nodes */}
+          {status === 'available' && (
+            <motion.div
+              className="absolute inset-0 rounded-full border-2 border-secondary"
+              animate={{ scale: [1, 1.2, 1], opacity: [0.6, 0, 0.6] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            />
+          )}
+        </div>
+
+        {/* XP badge below */}
+        <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded bg-card border border-border/50">
+          <span className="text-[9px] font-mono font-bold" style={{ color: activeColor }}>
+            {node.xpValue} XP
+          </span>
+        </div>
+      </motion.div>
+    </div>
   );
 }
 

@@ -11,6 +11,7 @@ import {
   Node,
   Edge,
   ConnectionMode,
+  MarkerType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -23,6 +24,18 @@ const nodeTypes = { skillNode: TreeNode };
 interface SkillTreeProps {
   nodes: SkillNode[];
   onTaskToggle: (nodeId: string, taskId: string) => void;
+}
+
+const categoryColors: Record<string, string> = {
+  devops: '#06b6d4',
+  business: '#f59e0b',
+  teaching: '#8b5cf6',
+  health: '#10b981',
+  creative: '#ec4899',
+};
+
+function catColorForNode(node: SkillNode): string {
+  return categoryColors[node.category] || '#ea580c';
 }
 
 export default function SkillTree({ nodes, onTaskToggle }: SkillTreeProps) {
@@ -41,17 +54,27 @@ export default function SkillTree({ nodes, onTaskToggle }: SkillTreeProps) {
     const edges: Edge[] = [];
     nodes.forEach((node) => {
       node.prerequisites.forEach((prereq) => {
+        const prereqNode = nodes.find((n) => n.id === prereq);
+        const isPathActive = prereqNode?.status === 'completed' || prereqNode?.status === 'active';
+        const edgeColor = isPathActive ? catColorForNode(node) : '#334155';
+        
         edges.push({
           id: `${prereq}-${node.id}`,
           source: prereq,
           target: node.id,
           type: 'smoothstep',
           style: {
-            stroke: node.status === 'locked' ? '#334155' : '#ea580c',
-            strokeWidth: 2,
-            opacity: node.status === 'locked' ? 0.4 : 0.8,
+            stroke: edgeColor,
+            strokeWidth: isPathActive ? 2.5 : 1.5,
+            opacity: node.status === 'locked' ? 0.35 : 0.85,
           },
-          animated: node.status !== 'locked',
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: edgeColor,
+            width: 12,
+            height: 12,
+          },
+          animated: isPathActive && node.status !== 'locked',
         });
       });
     });
